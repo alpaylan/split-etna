@@ -21,3 +21,11 @@ TAGS
 dist-newstyle/
 stack.yaml.lock
 stack.yaml.test
+
+# etna-ify additions
+/etna.log
+/progress.jsonl
+/.hegel/
+/.marauders/
+/dist-newstyle/
+/etna/dist-newstyle/

@@ -1,0 +1,68 @@
+name = "split"
+description = "Brent Yorgey's `split` package (byorgey/split). Bug fixes mined from upstream history; modern HEAD is the base, each patch reverse-applies a fix to install the original bug."
+language = "haskell"
+strategies = ["quickcheck", "hedgehog", "falsify", "smallcheck"]
+crate = "split"
+base_commit = "1638fd12cda0c3f83417c7f4f7614eecbed44085"
+
+# ---------------------------------------------------------------------------
+# Variant: drop_final_blank_empty_list_6da4473_1
+# ---------------------------------------------------------------------------
+[[tasks]]
+mutations = ["drop_final_blank_empty_list_6da4473_1"]
+
+[tasks.source]
+repo = "https://github.com/byorgey/split"
+commits = ["6da4473ce648485317c613b84c8a327a796f8496"]
+commit_subjects = ["Internals.hs: fix empty list bug with dropFinalBlank"]
+origin = "internal"
+summary = "Pre-fix `dropFinal` was `dropFinal DropBlank l | Text [] <- last l = init l; dropFinal _ l = l`. Calling it with an empty `SplitList` (which happens whenever the input becomes empty after `dropInitial`, e.g. for `split (dropFinalBlank . dropInitBlank $ oneOf x) \"\"`) crashes with `Prelude.last: empty list`. The fix added a `dropFinal _ [] = []` guard. A later refactor (cbc3c5f, space leak) rewrote `dropFinal` to use a recursive helper and independently handles the empty case via `dropFinal' [] = []`; the synthesized patch reverts both safety nets to recreate the historical crash on modern HEAD."
+
+[tasks.injection]
+kind = "patch"
+files = ["src/Data/List/Split/Internals.hs"]
+locations = [{ file = "src/Data/List/Split/Internals.hs", line = 247, symbol = "dropFinal" }]
+patch = "patches/drop_final_blank_empty_list_6da4473_1.patch"
+
+[tasks.bug]
+short_name = "drop_final_blank_crashes_on_empty_input"
+invariant = "`split (dropFinalBlank . dropInitBlank $ oneOf delims) input` must not crash and must return at most `length input + 1` chunks for any non-empty `delims` and any `input`."
+how_triggered = "Reverse-applying the patch swaps the modern guarded helper for the historical `last/init` formulation. Calling the splitter with `input = \"\"` (or any input that reduces to `[]` after `dropInitial`) then evaluates `last []`, which raises `Prelude.last: empty list`."
+
+[[tasks.tasks]]
+property = "DropFinalBlankEmptyList"
+witnesses = [
+  { test_fn = "witness_drop_final_blank_empty_list_case_empty",        note = "split (dropFinalBlank . dropInitBlank $ oneOf \"x\") \"\" must not crash" },
+  { test_fn = "witness_drop_final_blank_empty_list_case_single_delim", note = "split (dropFinalBlank . dropInitBlank $ oneOf \"x\") \"x\" must not crash" },
+]
+
+# ---------------------------------------------------------------------------
+# Variant: unintercalate_inverse_82edf4e_1
+# ---------------------------------------------------------------------------
+[[tasks]]
+mutations = ["unintercalate_inverse_82edf4e_1"]
+
+[tasks.source]
+repo = "https://github.com/byorgey/split"
+commits = ["82edf4e8af6b20f43567e7448ce106470d3ec015"]
+commit_subjects = ["fix properties for unintercalate, add properties for splitEvery"]
+origin = "internal"
+summary = "Pre-fix `unintercalate = endBy`. `endBy` strips the trailing empty chunk that follows a final delimiter, so the inverse property `intercalate x . unintercalate x = id` fails for any input ending in the delimiter (e.g. `unintercalate \"x\" \"ax\"` returned `[\"a\"]` instead of `[\"a\",\"\"]`). The fix swapped to `sepBy` (the modern `splitOn`); the patch reverts to the historical `endBy` form."
+
+[tasks.injection]
+kind = "patch"
+files = ["src/Data/List/Split/Internals.hs"]
+locations = [{ file = "src/Data/List/Split/Internals.hs", line = 532, symbol = "unintercalate" }]
+patch = "patches/unintercalate_inverse_82edf4e_1.patch"
+
+[tasks.bug]
+short_name = "unintercalate_endBy_loses_trailing_chunk"
+invariant = "`intercalate delim (unintercalate delim input) == input` for every non-empty `delim` and arbitrary `input`."
+how_triggered = "Reverse-applying the patch reassigns `unintercalate = endBy`. For any input ending in the delimiter (e.g. `\"ax\"` with `\"x\"`) the recovered list omits the trailing empty chunk, so `intercalate` does not reproduce the original input."
+
+[[tasks.tasks]]
+property = "UnintercalateIsInverseOfIntercalate"
+witnesses = [
+  { test_fn = "witness_unintercalate_is_inverse_of_intercalate_case_trailing_delim", note = "intercalate \"x\" (unintercalate \"x\" \"ax\") must equal \"ax\"" },
+  { test_fn = "witness_unintercalate_is_inverse_of_intercalate_case_abx",            note = "intercalate \"x\" (unintercalate \"x\" \"abx\") must equal \"abx\"" },
+]
