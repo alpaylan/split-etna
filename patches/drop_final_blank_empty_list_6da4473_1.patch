@@ -1,39 +1,18 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: ETNA Workload Synthesizer <noreply@example.com>
-Date: Sat, 02 May 2026 00:00:00 +0000
-Subject: [PATCH] Synthesized: dropFinal empty list crash bug
- (after 6da4473ce648485317c613b84c8a327a796f8496)
-
-Historical context: commit 6da4473 added the missing
-`dropFinal _ [] = []` clause; before that fix, `dropFinal DropBlank
-[]` evaluated `last []` and crashed at runtime. A later refactor
-(cbc3c5f, "fix space leak") rewrote dropFinal to use a recursive
-helper, which independently handles the empty case via
-`dropFinal' [] = []`. Reverting just one safety net no longer
-reproduces the historical crash on modern HEAD, so this patch
-reverses both -- restoring the original `last l / init l`
-formulation that crashes on an empty SplitList.
-
-The `+++` side is modern HEAD (fixed); the `---` side is the
-historical buggy formulation. `git apply -R` installs the bug.
----
- src/Data/List/Split/Internals.hs | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
-
 diff --git a/src/Data/List/Split/Internals.hs b/src/Data/List/Split/Internals.hs
+index 03c3431..5452e3a 100644
 --- a/src/Data/List/Split/Internals.hs
 +++ b/src/Data/List/Split/Internals.hs
-@@ -245,7 +245,12 @@ dropInitial _ l = l
-
+@@ -245,12 +245,7 @@ dropInitial _ l = l
+ 
  -- | Drop a final blank chunk according to the given 'EndPolicy'.
  dropFinal :: EndPolicy -> SplitList a -> SplitList a
--dropFinal DropBlank l | Text [] <- last l = init l
-+dropFinal _ [] = []
-+dropFinal DropBlank l = dropFinal' l
-+ where
-+  dropFinal' [] = []
-+  dropFinal' [Text []] = []
-+  dropFinal' (x : xs) = x : dropFinal' xs
+-dropFinal _ [] = []
+-dropFinal DropBlank l = dropFinal' l
+- where
+-  dropFinal' [] = []
+-  dropFinal' [Text []] = []
+-  dropFinal' (x : xs) = x : dropFinal' xs
++dropFinal DropBlank l | Text [] <- last l = init l
  dropFinal _ l = l
-
+ 
  -- * Combinators

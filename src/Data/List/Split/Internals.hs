@@ -529,7 +529,7 @@ endByOneOf = split . dropFinalBlank . dropDelims . oneOf
 
 {-# DEPRECATED unintercalate "Use splitOn." #-}
 unintercalate :: (Eq a) => [a] -> [a] -> [[a]]
-unintercalate = splitOn
+unintercalate = endBy
 
 -- | Split into \"words\", with word boundaries indicated by the given
 --   predicate.  Satisfies @'Data.List.words' === wordsBy

@@ -1,32 +1,13 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: ETNA Workload Synthesizer <noreply@example.com>
-Date: Sat, 02 May 2026 00:00:00 +0000
-Subject: [PATCH] Synthesized: unintercalate uses endBy instead of splitOn
- (after 82edf4e8af6b20f43567e7448ce106470d3ec015)
-
-Historical context: commit 82edf4e fixed `unintercalate = endBy` to
-`unintercalate = sepBy`. The buggy form drops a trailing empty chunk
-when the input ends in the delimiter, breaking the inverse property
-`intercalate x (unintercalate x s) == s`. On modern HEAD the binding
-reads `unintercalate = splitOn` (`splitOn` is the modern name for
-`sepBy`; `sepBy = splitOn` in the same module). Reverting to the
-historical `endBy` form reproduces the bug.
-
-The `+++` side is modern HEAD (fixed); the `---` side is the
-historical buggy formulation. `git apply -R` installs the bug.
----
- src/Data/List/Split/Internals.hs | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
 diff --git a/src/Data/List/Split/Internals.hs b/src/Data/List/Split/Internals.hs
+index 03c3431..810c7a0 100644
 --- a/src/Data/List/Split/Internals.hs
 +++ b/src/Data/List/Split/Internals.hs
 @@ -529,7 +529,7 @@ endByOneOf = split . dropFinalBlank . dropDelims . oneOf
-
+ 
  {-# DEPRECATED unintercalate "Use splitOn." #-}
  unintercalate :: (Eq a) => [a] -> [a] -> [[a]]
--unintercalate = endBy
-+unintercalate = splitOn
-
+-unintercalate = splitOn
++unintercalate = endBy
+ 
  -- | Split into \"words\", with word boundaries indicated by the given
  --   predicate.  Satisfies @'Data.List.words' === wordsBy
